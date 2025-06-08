@@ -10,7 +10,7 @@ const tileSize = regularMap.tileheight;
 let grid = [];
 let chunks = [];
 const DIM = 16; // размер сетки
-const regionSize = 5;
+const regionSize = 10;
 const canvasSize = DIM * tileSize * regionSize;
 let isPaused = false;
 let collapseSpeed = 120; // Коллапсируем 5 ячеек в секунду
@@ -73,6 +73,32 @@ const resetGrid = () => {
 	}
 };
 
+const getRightEdgeFromLastChunk = () => {
+	if (chunks.length === 0) return null;
+	const lastChunk = chunks[chunks.length - 1];
+	const rightEdge = [];
+	for (let y = 0; y < DIM; y++) {
+		const index = DIM - 1 + y * DIM; // Индексы правого края
+		rightEdge.push(lastChunk[index].options[0]);
+	}
+	return rightEdge;
+};
+const getBottomEdgeFromUpperChunk = () => {
+	if (chunks.length < regionSize) return null; // Нет чанка сверху
+
+	const upperChunkIndex = chunks.length - regionSize;
+	if (upperChunkIndex < 0) return null;
+
+	const upperChunk = chunks[upperChunkIndex];
+	const bottomEdge = [];
+
+	for (let x = 0; x < DIM; x++) {
+		const index = x + (DIM - 1) * DIM; // Индексы нижнего края верхнего чанка
+		bottomEdge.push(upperChunk[index].options[0]);
+	}
+
+	return bottomEdge;
+};
 sketch.mousePressed = () => {
 	restoreGridState();
 	isPaused = !isPaused;
@@ -95,19 +121,27 @@ const collapseNextCell = () => {
 	);
 
 	// Выбираем случайную ячейку из кандидатов и коллапсируем её
-	const cell = random(candidates);
+	// const cell = random(candidates);
 
-	// const cell = uncollapsedCells[0];
+	const cell = uncollapsedCells[0];
 	cell.collapsed = true;
 	cell.options = [random(cell.options)];
 };
+
 const updateNeighbors = () => {
+	const rightEdgeOfLastChunk = getRightEdgeFromLastChunk();
+	const bottomEdgeOfUpperChunk = getBottomEdgeFromUpperChunk();
+	const currentRow = Math.floor(chunks.length / regionSize);
 	for (let j = 0; j < DIM; j++) {
 		for (let i = 0; i < DIM; i++) {
 			let index = i + j * DIM;
 			const cell = grid[index];
 			if (cell.collapsed) continue;
+			cell.error = false;
+			// Сохраняем оригинальные опции на случай ошибки
+			const originalOptions = [...cell.options];
 			let options = [...cell.options]; // Копируем текущие варианты
+			// let options = [...regularMapTilesIndex]; // Начинаем с полного набора
 
 			// Проверяем соседей
 
@@ -115,6 +149,10 @@ const updateNeighbors = () => {
 				// Верхний сосед
 				const upCell = grid[i + (j - 1) * DIM];
 				const valid = upCell.options.flatMap((opt) => rules[opt][2]); // DOWN rule
+				checkValid(options, valid);
+			} else if (currentRow > 0 && bottomEdgeOfUpperChunk) {
+				// Если это верхний край и есть чанк сверху - используем его нижний край
+				const valid = rules[bottomEdgeOfUpperChunk[i]][2]; // DOWN rule для тайла из верхнего чанка
 				checkValid(options, valid);
 			}
 			if (i < DIM - 1) {
@@ -135,52 +173,69 @@ const updateNeighbors = () => {
 				const leftCell = grid[i - 1 + j * DIM];
 				const valid = leftCell.options?.flatMap((opt) => rules[opt][1]); // RIGHT rule
 				checkValid(options, valid);
+			} else if (rightEdgeOfLastChunk) {
+				// Если это левый край и есть предыдущий чанк - используем его правый край
+				const valid = rules[rightEdgeOfLastChunk[j]][1]; // RIGHT rule для тайла из предыдущего чанка
+				checkValid(options, valid);
 			}
-			// if (i == 0 && chunks.length > 0) {
-			// 	//правый край чанка
 
-			// 	const lastChunk = chunks[chunks.length - 1];
-			// 	const rightCell = lastChunk[j * DIM + DIM - 1];
-
-			// 	const valid = rightCell.options?.flatMap(
-			// 		(opt) => rules[opt][1]
-			// 	); // RIGHT rule
-			// 	checkValid(options, valid);
-			// }
 			if (options.length === 0) {
-				console.log("ошибка №", i);
-				// isPaused = true;
-				// chunks.pop();
-				// resetGrid();
-				restoreGridState();
-				return;
+				cell.error = true;
+				cell.options = originalOptions; // Возвращаем предыдущие варианты
 			} else {
 				cell.options = options;
+				// cell.error = false;
 			}
 		}
+	}
+};
+const drawAllChunks = () => {
+	const chunksPerRow = regionSize;
+	const chunkWidth = DIM * tileSize;
+	const chunkHeight = DIM * tileSize;
+
+	for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+		const chunk = chunks[chunkIndex];
+		const row = Math.floor(chunkIndex / chunksPerRow);
+		const col = chunkIndex % chunksPerRow;
+
+		push();
+		translate(col * chunkWidth, row * chunkHeight);
+		drawGrid(DIM, chunk, tiles, regularMapTilesIndex);
+		pop();
 	}
 };
 sketch.draw = () => {
 	background(100);
 	noSmooth();
-	//сначала рисуем все чанки
 
-	// chunks.map((chunk, index) => {
-	// 	const x = index % regionSize;
-	// 	const y = Math.floor(index / regionSize);
-	// 	// const y = 0;
-	// 	drawGrid(DIM, chunk, tiles, regularMapTilesIndex, x, y);
-	// });
+	// Отрисовываем все сохраненные чанки с переносом строк
+	drawAllChunks();
 
-	// потом рисуем сетку в процессе определения
-	// const x = chunks.length % regionSize;
-	// const y = Math.floor(chunks.length / regionSize);
-	// const y = 0;
+	// Вычисляем позицию для текущей сетки (grid)
+	const chunksPerRow = regionSize;
+	const chunksInLastRow = chunks.length % chunksPerRow;
+	const currentRow = Math.floor(chunks.length / chunksPerRow);
+
+	// Отрисовываем текущую сетку справа от последнего чанка в строке
+	// или с новой строки, если текущая строка заполнена
+	push();
+	if (chunksInLastRow === 0 && chunks.length > 0) {
+		// Новая строка
+		translate(0, currentRow * DIM * tileSize);
+	} else {
+		// Текущая строка
+		translate(
+			chunksInLastRow * DIM * tileSize,
+			currentRow * DIM * tileSize
+		);
+	}
 	drawGrid(DIM, grid, tiles, regularMapTilesIndex);
+	pop();
 
 	// Если сетка уже полностью коллапсирована — перезапускаем
 	if (isGridFullyCollapsed()) {
-		// chunks.push(grid);
+		chunks.push([...grid]);
 		resetGrid();
 		return;
 	}

@@ -18,13 +18,13 @@ const drawGrid = (
 			const index = i + j * DIM;
 			const cell = grid[index];
 			if (cell.error) {
-				fill(255, 0, 0); // Красный цвет для ошибок
-				// image(tiles[[...regularMapTilesIndex][0]], i * wCell, j * hCell, wCell, hCell);
-				rect(i * wCell * DIM * x, j * hCell * DIM * y, wCell, hCell);
-				fill(255); // Белый цвет текста
-				textSize(wCell * 0.5); // Размер текста (адаптивный)
-				textAlign(CENTER, CENTER);
-				text("error");
+				// fill(255, 0, 0); // Красный цвет для ошибок
+				// // image(tiles[[...regularMapTilesIndex][0]], i * wCell, j * hCell, wCell, hCell);
+				// rect(i * wCell * DIM * x, j * hCell * DIM * y, wCell, hCell);
+				// fill(255); // Белый цвет текста
+				// textSize(wCell * 0.5); // Размер текста (адаптивный)
+				// textAlign(CENTER, CENTER);
+				// text("error");
 			} else if (cell.collapsed) {
 				image(
 					tiles[cell.options[0]],

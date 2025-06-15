@@ -9,8 +9,8 @@ let tileset;
 const tileSize = regularMap.tileheight;
 let grid = [];
 let chunks = [];
-const DIM = 16; // размер сетки
-const regionSize = 4;
+const DIM = 8; // размер сетки
+const regionSize = 5;
 const canvasSize = DIM * tileSize * regionSize;
 let isPaused = false;
 let collapseSpeed = 120; // Коллапсируем 5 ячеек в секунду
@@ -185,19 +185,20 @@ const updateNeighbors = () => {
 			}
 
 			if (options.length === 0) {
-				console.log("errorCount:", i, j);
 				if (i <= 1 || j <= 1) {
 					cell.error = true;
+					cell.collapsed = false;
 					cell.options = originalOptions;
 				} else {
 					restoreGridState();
 					resetGrid();
 					cell.options = originalOptions;
+					cell.error = false;
 				}
 			} else {
 				cell.options = options;
 				// return;
-				// cell.error = false;
+				cell.error = false;
 			}
 		}
 	}
@@ -244,6 +245,7 @@ sketch.draw = () => {
 	// Если сетка уже полностью коллапсирована — перезапускаем
 	if (isGridFullyCollapsed()) {
 		chunks.push([...grid]);
+		console.log(chunks);
 		resetGrid();
 		return;
 	}

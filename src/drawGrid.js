@@ -1,11 +1,4 @@
-const drawGrid = (
-	DIM = 0,
-	grid = [],
-	tiles = [],
-	regularMapTilesIndex = 0,
-	x = 0,
-	y = 0
-) => {
+const drawGrid = (DIM = 0, grid = [], tiles = [], regularMapTilesIndex = 0, x = 0, y = 0) => {
 	if (!tiles || !regularMapTilesIndex) {
 		// 🔥 Проверка на загрузку
 		console.error("🔥 Проверка на загрузку");
@@ -17,38 +10,18 @@ const drawGrid = (
 		for (let i = 0; i < DIM; i++) {
 			const index = i + j * DIM;
 			const cell = grid[index];
-			if (cell.error) {
-				// fill(255, 0, 0); // Красный цвет для ошибок
+
+			if (cell.collapsed && !cell.error) {
+				image(tiles[cell.options[0]], i * wCell + wCell * DIM * x, j * hCell + hCell * DIM * y, wCell, hCell);
+			} else if (cell.error) {
+				fill(255, 0, 0); // Красный цвет для ошибок
 				// // image(tiles[[...regularMapTilesIndex][0]], i * wCell, j * hCell, wCell, hCell);
-				// rect(i * wCell * DIM * x, j * hCell * DIM * y, wCell, hCell);
-				// fill(255); // Белый цвет текста
-				// textSize(wCell * 0.5); // Размер текста (адаптивный)
-				// textAlign(CENTER, CENTER);
-				// text("error");
-			} else if (cell.collapsed) {
-				image(
-					tiles[cell.options[0]],
-					i * wCell + wCell * DIM * x,
-					j * hCell + hCell * DIM * y,
-					wCell,
-					hCell
-				);
+				rect(i * wCell * DIM * x, j * hCell * DIM * y, wCell, hCell);
 			} else {
-				const grayValue = map(
-					cell.options.length,
-					1,
-					[...regularMapTilesIndex].length,
-					100,
-					20
-				);
+				const grayValue = map(cell.options.length, 1, [...regularMapTilesIndex].length, 100, 20);
 				fill(grayValue);
 				// stroke(255);
-				rect(
-					i * wCell + wCell * DIM * x,
-					j * hCell + hCell * DIM * y,
-					wCell,
-					hCell
-				);
+				rect(i * wCell + wCell * DIM * x, j * hCell + hCell * DIM * y, wCell, hCell);
 				fill(255 - grayValue); // Белый цвет текста
 				textSize(wCell * 0.5); // Размер текста (адаптивный)
 				textAlign(CENTER, CENTER);

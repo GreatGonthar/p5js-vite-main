@@ -9,13 +9,12 @@ let tileset;
 const tileSize = regularMap.tileheight;
 let grid = [];
 let chunks = [];
-const DIM = 16; // размер сетки
+const DIM = 8; // размер сетки
 const regionSize = 4;
 const canvasSize = DIM * tileSize * regionSize;
 let isPaused = false;
 let collapseSpeed = 120; // Коллапсируем 5 ячеек в секунду
-let defaultMap = regularMap.layers[0].data.map((item) => item - 1);
-// defaultMap = [1, 2, 2, 1];
+const defaultMap = regularMap.layers[0].data.map((item) => item - 1);
 const [rules, regularMapTilesIndex] = makeRules(defaultMap);
 const checkValid = (arr, valid) => {
 	for (let i = arr.length - 1; i >= 0; i--) {
@@ -27,6 +26,7 @@ const filterValid = (arr, valid) => {
 	return arr.filter((item) => valid.includes(item));
 };
 let previousGridState = [];
+let errorCount = 0;
 
 const saveGridState = () => {
 	previousGridState = grid.map((cell) => ({
@@ -70,6 +70,7 @@ const resetGrid = () => {
 		};
 	}
 };
+
 const getRightEdgeFromLastChunk = () => {
 	if (chunks.length === 0) return null;
 	const lastChunk = chunks[chunks.length - 1];
@@ -97,7 +98,7 @@ const getBottomEdgeFromUpperChunk = () => {
 	return bottomEdge;
 };
 sketch.mousePressed = () => {
-	// restoreGridState();
+	restoreGridState();
 	isPaused = !isPaused;
 };
 
@@ -106,26 +107,24 @@ const isGridFullyCollapsed = () => {
 };
 
 const collapseNextCell = () => {
-	saveGridState(); // Сохраняем текущее состояние перед коллапсом
+	saveGridState();
+	// Сохраняем текущее состояние перед коллапсом
 	// Находим ячейки с минимальной энтропией (наименьшим количеством вариантов)
 	const uncollapsedCells = grid.filter((cell) => !cell.collapsed); // убираем все ячейки где collapsed == true
 	if (uncollapsedCells.length === 0) return;
-	// let firstCell = uncollapsedCells[0];
-	// firstCell.collapsed = true;
-	// firstCell.options = [random(firstCell.options)];
+
 	uncollapsedCells.sort((a, b) => a.options.length - b.options.length); // сортируем ячейки по энтропии
 	const minEntropy = uncollapsedCells[0].options.length; // пусть по умолчанию минимальная энтропия у первой ячейки
 	const candidates = uncollapsedCells.filter((cell) => cell.options.length === minEntropy);
 
 	// Выбираем случайную ячейку из кандидатов и коллапсируем её
-	const cell = random(candidates);
+	// const cell = random(candidates);
 
-	// const cell = uncollapsedCells[candidates.length - 1];
+	const cell = uncollapsedCells[0];
 	cell.collapsed = true;
 	cell.options = [random(cell.options)];
 };
-let errorCount = 0;
-let errors = 0;
+
 const updateNeighbors = () => {
 	const rightEdgeOfLastChunk = getRightEdgeFromLastChunk();
 	const bottomEdgeOfUpperChunk = getBottomEdgeFromUpperChunk();
@@ -185,15 +184,12 @@ const updateNeighbors = () => {
 			}
 
 			if (options.length === 0) {
-				console.log("errorCount:", i, j);
-				if (i <= 1 || j <= 1) {
-					cell.error = true;
-					cell.options = originalOptions;
-				} else {
-					restoreGridState();
-					resetGrid();
-					cell.options = originalOptions;
-				}
+				console.log("Contradiction at:", i, j);
+				cell.error = true;
+				restoreGridState();
+				cell.options = originalOptions;
+				resetGrid();
+				// return;
 			} else {
 				cell.options = options;
 				// return;
@@ -221,6 +217,8 @@ const drawAllChunks = () => {
 sketch.draw = () => {
 	background(100);
 	noSmooth();
+
+	// Отрисовываем все сохраненные чанки с переносом строк
 	drawAllChunks();
 
 	// Вычисляем позицию для текущей сетки (grid)
@@ -251,7 +249,6 @@ sketch.draw = () => {
 	// Коллапсируем следующую ячейку (если не на паузе)
 	if (!isPaused) {
 		collapseNextCell();
-
 		updateNeighbors();
 	}
 };
